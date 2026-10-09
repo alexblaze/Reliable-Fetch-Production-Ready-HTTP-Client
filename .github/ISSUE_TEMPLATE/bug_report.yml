@@ -1,0 +1,28 @@
+name: Bug report
+description: Something behaves incorrectly (not a security vulnerability — see SECURITY.md)
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "**Do not report vulnerabilities here.** Use a private security advisory (see SECURITY.md). Never paste tokens, cookies or private URLs."
+  - type: input
+    id: version
+    attributes: { label: steadyfetch version }
+    validations: { required: true }
+  - type: input
+    id: runtime
+    attributes: { label: Runtime (Node.js version / browser) }
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      {
+        label: Minimal reproduction,
+        description: "Config, request and what happened. Redact secrets.",
+      }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      { label: Expected vs actual behaviour, description: "Include the error `code` if any." }
+    validations: { required: true }
