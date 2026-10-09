@@ -1,0 +1,56 @@
+name: Release
+
+# Publishes ONLY from a version tag (vX.Y.Z), after all checks, and only after approval
+# of the `npm-release` environment (configure required reviewers in repo settings).
+# Uses npm trusted publishing (OIDC): no long-lived npm token is stored anywhere.
+# Setup: on npmjs.com add this repository + workflow `release.yml` as a Trusted Publisher.
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag must match package.json version
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$PKG" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $PKG"; exit 1
+          fi
+      - name: Changelog must mention the version
+        run: grep -q "## \[$(node -p "require('./package.json').version")\]" CHANGELOG.md
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify:pack
+      - run: node scripts/smoke-consumer.mjs
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write # OIDC for trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@^11.5.1 # trusted publishing needs a recent npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm publish --provenance --access public --ignore-scripts
